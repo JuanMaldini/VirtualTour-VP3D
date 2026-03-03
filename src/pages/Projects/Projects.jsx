@@ -11,7 +11,7 @@ const Projects = () => (
         </div>
         <div className="flex flex-col gap-1">
           <Link
-            to="/apartment-1"
+            to="/TEK016Cisco"
             className="w-fit text-base font-medium text-slate-900 no-underline transition-colors hover:text-slate-600"
           >
             TEK016-Cisco
