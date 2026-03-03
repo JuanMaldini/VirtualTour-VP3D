@@ -1,7 +1,5 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { GiHamburgerMenu } from "react-icons/gi";
-import logo from "/icons/logo.svg";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -37,7 +35,6 @@ const Navbar = () => {
         to="/"
         className="flex items-center gap-2 text-[18px] font-semibold tracking-[0.01em] text-black no-underline hover:opacity-80 sm:text-[20px]"
       >
-        <img src={logo} alt="Logo" className="h-6 w-6" />
 
       </Link>
       <div
