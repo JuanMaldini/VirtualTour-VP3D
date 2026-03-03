@@ -9,7 +9,7 @@ const projectTours = [
 ];
 
 const Projects = () => (
-  <div className="flex min-h-full w-full flex-1 flex-col bg-gray-100 px-4 py-6 sm:px-6">
+  <div className="flex min-h-full w-full flex-1 flex-col bg-gray-900 px-4 py-6 sm:px-6">
     <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-4 lg:grid-cols-3">
       {projectTours.map((tour) => (
         <ProjectTourPreviewCard
