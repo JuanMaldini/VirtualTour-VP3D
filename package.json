@@ -1,0 +1,52 @@
+{
+  "name": "VirtualTour-VP3D",
+  "version": "0.10.2",
+  "description": "",
+  "author": "Woloviz Team",
+  "license": "Apache-2.0",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "testem ci",
+    "livetest": "testem",
+    "dev": "scripts/dev",
+    "web:dev": "vite",
+    "web:build": "vite build",
+    "web:preview": "vite preview",
+    "release": "scripts/release",
+    "deploy": "scripts/deploy",
+    "prepublishOnly": "scripts/prepublish"
+  },
+  "dependencies": {
+    "@google/model-viewer": "^4.1.0",
+    "@vercel/analytics": "^1.6.1",
+    "@vercel/speed-insights": "^1.3.1",
+    "bowser": "1.9.4",
+    "gl-matrix": "3.3.0",
+    "hammerjs": "2.0.4",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.0",
+    "minimal-event-emitter": "1.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^6.26.2",
+    "three": "^0.182.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "@vitejs/plugin-react": "^4.3.2",
+    "autoprefixer": "^10.4.24",
+    "browserify": "^17.0.0",
+    "chai": "^4.2.0",
+    "jsdoc": "^3.6.6",
+    "lr-http-server": "^0.1.5",
+    "mocha": "^8.2.1",
+    "postcss": "^8.5.6",
+    "sinon": "^9.2.2",
+    "tailwindcss": "^4.1.18",
+    "testem": "^3.2.0",
+    "uglify-js": "^3.12.3",
+    "vite": "^5.4.2",
+    "watchify": "^3.11.1"
+  }
+}
