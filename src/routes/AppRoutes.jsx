@@ -5,6 +5,8 @@ import Projects from "../pages/Projects/Projects";
 
 import Playground from "../pages/Projects/Tours/playground/playground";
 
+import TEK016Cisco from "../pages/Projects/Tours/TEK016Cisco/TEK016Cisco";
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -14,6 +16,7 @@ const AppRoutes = () => {
       <Route path="/playground" element={<Playground />} />
 
       {/*TOUR*/}
+      <Route path="/TEK016Cisco" element={<TEK016Cisco />} />
 
       {/*NOT FOUND*/}
       <Route path="*" element={<NotFound />} />

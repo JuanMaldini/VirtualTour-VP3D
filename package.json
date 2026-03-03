@@ -2,7 +2,7 @@
   "name": "VirtualTour-VP3D",
   "version": "0.10.2",
   "description": "",
-  "author": "Woloviz Team",
+  "author": "VirtualTour Team",
   "license": "Apache-2.0",
   "main": "src/index.js",
   "scripts": {

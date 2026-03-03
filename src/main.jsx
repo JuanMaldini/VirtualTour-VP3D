@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import App from "./pages/App/App";
 
-const CHUNK_RELOAD_KEY = "__woloviz_chunk_reload_once__";
+const CHUNK_RELOAD_KEY = "__VP3DVirtualTour_chunk_reload_once__";
 const CHUNK_ERROR_PATTERNS = [
   /ChunkLoadError/i,
   /Loading chunk [\d]+ failed/i,

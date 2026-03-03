@@ -13,13 +13,14 @@ import {
   preloadTourAssetsWithProgress,
 } from "../utils/tourAssetLoading";
 
+
 // Generated from /playground
 // Relative positions (0..1) over floorplan image.
 export const floorplanScenePositions = [
-  { id: "scene-1", x: 0.938, y: 0.4006578947368421 },
-  { id: "scene-2", x: 0.5888157894736842, y: 0.28289473684210525 },
-  { id: "scene-3", x: 0.776, y: 0.5796052631578947 },
-  { id: "scene-4", x: 0.5, y: 0.5 },
+  { id: "scene-1", x: 0.7331872050084802, y: 0.6604988772342981 },
+  { id: "scene-2", x: 0.43201752254947684, y: 0.7964637919806397 },
+  { id: "scene-3", x: 0.7200293113283409, y: 0.6473409835541588 },
+  { id: "scene-4", x: 0.4904970678632983, y: 0.6444169982575267 },
 ];
 
 export const data = {
@@ -27,42 +28,42 @@ export const data = {
     {
       id: "scene-1",
       name: "scene1",
-      imageUrl: "/public/projects/Apartment2/Apartment2_360_01.jpg", // original file: Apartment2_360_01.jpg
+      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View01.jpg",
       equirectWidth: 4000,
       initialViewParameters: {
-        pitch: 5,
-        yaw: 295,
-        fov: 100,
+        pitch: 0,
+        yaw: 0,
+        fov: 110,
       },
       linkHotspots: [
-        { yaw: -1.65732, pitch: -22.765205, target: "scene-2" },
-        { yaw: -42.054088, pitch: -14.062712, target: "scene-3" },
+        { yaw: 60.279305, pitch: -19.21807, target: "scene-2" },
+        { yaw: -31.381337, pitch: -26.889783, target: "scene-3" },
       ],
       infoHotspots: [
+        { yaw: 88.040042, pitch: -6.405186, title: "informacion", text: "phone description" },
       ],
     },
     {
       id: "scene-2",
       name: "scene2",
-      imageUrl: "/public/projects/Apartment2/Apartment2_360_02.jpg", // original file: Apartment2_360_02.jpg
+      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View02.jpg",
       equirectWidth: 4000,
       linkHotspots: [
-        { yaw: 178.901774, pitch: -21.890689, target: "scene-1" },
-        { yaw: -79.0674, pitch: -21.006124, target: "scene-3" },
-        { yaw: -99.495114, pitch: -15.770656, target: "scene-4" },
+        { yaw: -43.641441, pitch: -21.445531, target: "scene-1" },
+        { yaw: 68.920507, pitch: -20.062155, target: "scene-4" },
       ],
       infoHotspots: [
+        { yaw: 18.884843, pitch: -23.073239, title: "taza", text: "should be clean" },
       ],
     },
     {
       id: "scene-3",
       name: "scene3",
-      imageUrl: "/public/projects/Apartment2/Apartment2_360_03.jpg", // original file: Apartment2_360_03.jpg
+      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View03.jpg",
       equirectWidth: 4000,
       linkHotspots: [
-        { yaw: 133.139627, pitch: -17.155637, target: "scene-1" },
-        { yaw: 85.68115, pitch: -23.16039, target: "scene-2" },
-        { yaw: -114.628321, pitch: -38.19572, target: "scene-4" },
+        { yaw: -140.133699, pitch: -24.603145, target: "scene-1" },
+        { yaw: 123.782366, pitch: -19.4508, target: "scene-4" },
       ],
       infoHotspots: [
       ],
@@ -70,19 +71,18 @@ export const data = {
     {
       id: "scene-4",
       name: "scene4",
-      imageUrl: "/public/projects/Apartment2/Apartment2_360_04.jpg", // original file: Apartment2_360_04.jpg
+      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View04.jpg",
       equirectWidth: 4000,
       linkHotspots: [
-        { yaw: 117.383696, pitch: -12.720225, target: "scene-1" },
-        { yaw: 79.303294, pitch: -15.399052, target: "scene-2" },
-        { yaw: 51.74327, pitch: -34.171095, target: "scene-3" },
+        { yaw: -114.52864, pitch: -21.734278, target: "scene-2" },
+        { yaw: -35.365572, pitch: -16.045635, target: "scene-3" },
       ],
       infoHotspots: [
       ],
     }
   ],
-  name: "Apartment2",
-  floorplanImageUrl: "/public/projects/Apartment2/Apartment2_360_top.jpg",
+  name: "TEK016Cisco",
+  floorplanImageUrl: "",
   settings: {
     mouseViewMode: "drag",
     autorotateEnabled: false,
@@ -90,7 +90,8 @@ export const data = {
     viewControlButtons: false,
   },
 };
-const Apartment2 = () => {
+
+const TEK016Cisco = () => {
   const rootRef = useRef(null);
   const [topBarTarget, setTopBarTarget] = useState(null);
   const [resolvedAssetUrls, setResolvedAssetUrls] = useState(null);
@@ -112,10 +113,8 @@ const Apartment2 = () => {
 
   const assetUrls = useMemo(
     () => ({
-      floorplan: new URL(
-        "/projects/Apartment2/Apartment2_360_top.jpg",
-        import.meta.url,
-      ).href,
+      floorplan: new URL("/projects/Apartment1/Apartment1-Floorplan.png", import.meta.url)
+        .href,
       close: new URL("../imgButtons/close.png", import.meta.url).href,
     }),
     [],
@@ -340,11 +339,11 @@ const Apartment2 = () => {
         const sceneImageUrl = resolvePreloadedUrl(sceneData.imageUrl);
         const source = Marzipano.ImageUrlSource.fromString(sceneImageUrl);
         const geometry = new Marzipano.EquirectGeometry([
-          { width: sceneData.equirectWidth },
+          { width: sceneData.equirectWidth || 4000 },
         ]);
 
         const limiter = Marzipano.RectilinearView.limit.traditional(
-          10000,
+          4000,
           (120 * Math.PI) / 180,
           (120 * Math.PI) / 180,
         );
@@ -738,4 +737,4 @@ const Apartment2 = () => {
   );
 };
 
-export default Apartment2;
+export default TEK016Cisco;
