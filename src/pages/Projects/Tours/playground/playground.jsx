@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FaLocationDot } from "react-icons/fa6";
 import {
@@ -24,7 +23,6 @@ const VIEW_CONTROL_BUTTONS_STORAGE_KEY = "playground:view-control-buttons";
 
 const Playground = () => {
   const rootRef = useRef(null);
-  const [topBarTarget, setTopBarTarget] = useState(null);
   const [isTourInfoModalOpen, setIsTourInfoModalOpen] = useState(false);
   const [runtimeData, setRuntimeData] = useState(data);
   const [runtimeFloorplanPositions, setRuntimeFloorplanPositions] = useState(
@@ -52,8 +50,6 @@ const Playground = () => {
   }, [activeData?.floorplanImageUrl]);
 
   useEffect(() => {
-    setTopBarTarget(document.getElementById("marzipanoTopBarSlot"));
-
     const root = rootRef.current;
     if (!root) {
       return undefined;
@@ -1479,16 +1475,14 @@ const Playground = () => {
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-black max-md:flex-col">
       <main className="relative flex min-h-0 flex-1 overflow-hidden">
         <div ref={rootRef} className="sample-ai-root">
-          {topBarTarget &&
-            createPortal(
-              <MarzipanoTopBar
-                scenes={activeData.scenes}
-                assetUrls={assetUrls}
-                floorplanPositions={activeFloorplanPositions}
-                enableFloorplanMarkerDrag
-              />,
-              topBarTarget,
-            )}
+          <div className="marzipano-topbar-shell">
+            <MarzipanoTopBar
+              scenes={activeData.scenes}
+              assetUrls={assetUrls}
+              floorplanPositions={activeFloorplanPositions}
+              enableFloorplanMarkerDrag
+            />
+          </div>
           <div id="pano" />
 
           <button

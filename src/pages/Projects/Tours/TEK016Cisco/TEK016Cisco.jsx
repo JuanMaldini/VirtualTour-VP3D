@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FaLocationDot } from "react-icons/fa6";
 import { IoInformationCircleOutline } from "react-icons/io5";
@@ -93,7 +92,6 @@ export const data = {
 
 const TEK016Cisco = () => {
   const rootRef = useRef(null);
-  const [topBarTarget, setTopBarTarget] = useState(null);
   const [resolvedAssetUrls, setResolvedAssetUrls] = useState(null);
   const [loadProgress, setLoadProgress] = useState({
     visible: false,
@@ -110,14 +108,18 @@ const TEK016Cisco = () => {
 
   const degToRad = (deg) => (deg * Math.PI) / 180;
   const hotspotPitchSign = -1;
+  const hasFloorplanImage =
+    typeof data.floorplanImageUrl === "string" &&
+    data.floorplanImageUrl.trim().length > 0;
 
   const assetUrls = useMemo(
     () => ({
-      floorplan: new URL("/projects/Apartment1/Apartment1-Floorplan.png", import.meta.url)
-        .href,
+      floorplan: hasFloorplanImage
+        ? new URL(data.floorplanImageUrl, import.meta.url).href
+        : "",
       close: new URL("../imgButtons/close.png", import.meta.url).href,
     }),
-    [],
+    [hasFloorplanImage],
   );
 
   useEffect(() => {
@@ -125,8 +127,6 @@ const TEK016Cisco = () => {
   }, [assetUrls]);
 
   useEffect(() => {
-    setTopBarTarget(document.getElementById("marzipanoTopBarSlot"));
-
     const root = rootRef.current;
     if (!root) {
       return undefined;
@@ -717,15 +717,14 @@ const TEK016Cisco = () => {
         totalFiles={loadProgress.totalFiles}
         hasError={loadProgress.hasError}
       />
-      {topBarTarget &&
-        createPortal(
-          <MarzipanoTopBar
-            scenes={data.scenes}
-            assetUrls={resolvedAssetUrls || assetUrls}
-            floorplanPositions={floorplanScenePositions}
-          />,
-          topBarTarget,
-        )}
+      <div className="marzipano-topbar-shell">
+        <MarzipanoTopBar
+          scenes={data.scenes}
+          assetUrls={resolvedAssetUrls || assetUrls}
+          showFloorplan={hasFloorplanImage}
+          floorplanPositions={floorplanScenePositions}
+        />
+      </div>
       <div id="pano" />
       <ViewControlButtons
         rootRef={rootRef}
