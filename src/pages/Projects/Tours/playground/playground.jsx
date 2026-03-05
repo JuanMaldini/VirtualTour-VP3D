@@ -8,12 +8,10 @@ import {
   IoChevronUp,
   IoRemove,
 } from "react-icons/io5";
-import { IoInformationCircleOutline } from "react-icons/io5";
 import bowser from "bowser";
 import "../style.css";
 import MarzipanoTopBar from "../components/MarzipanoTopBar";
 import Form from "./Form";
-import TourInfoModal from "./TourInfoModal";
 import { data, floorplanScenePositions } from "./data";
 
 const PRESERVE_CURRENT_VIEW_STORAGE_KEY = "playground:preserve-current-view";
@@ -23,7 +21,6 @@ const VIEW_CONTROL_BUTTONS_STORAGE_KEY = "playground:view-control-buttons";
 
 const Playground = () => {
   const rootRef = useRef(null);
-  const [isTourInfoModalOpen, setIsTourInfoModalOpen] = useState(false);
   const [runtimeData, setRuntimeData] = useState(data);
   const [runtimeFloorplanPositions, setRuntimeFloorplanPositions] = useState(
     floorplanScenePositions,
@@ -1472,7 +1469,7 @@ const Playground = () => {
   }, [assetUrls, activeData]);
 
   return (
-    <div className="flex h-full min-h-0 w-full overflow-hidden bg-black max-md:flex-col">
+    <div className="flex h-screen min-h-screen w-full overflow-hidden bg-black max-md:flex-col">
       <main className="relative flex min-h-0 flex-1 overflow-hidden">
         <div ref={rootRef} className="sample-ai-root">
           <div className="marzipano-topbar-shell">
@@ -1542,21 +1539,13 @@ const Playground = () => {
 
       <aside className="w-[340px] overflow-hidden transition-all duration-300 ease-in-out max-md:h-auto max-md:max-h-[45vh] max-md:w-full">
         <div className="relative flex h-full w-full flex-col overflow-hidden bg-slate-100 text-slate-900 max-[600px]:text-[0.78rem]">
-          <div className="flex items-baseline gap-2 border-b border-black/10 bg-slate-200 px-4 py-3 text-[0.95rem] max-[900px]:px-3 max-[900px]:py-2">
+          <div className="flex h-12 items-center gap-2 border-b border-black/10 bg-slate-200 px-4 text-[0.95rem] max-[900px]:px-3">
             <div className="flex items-center gap-2">
               <strong className="text-sm font-bold tracking-wide text-slate-700">
                 Build your tour
               </strong>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsTourInfoModalOpen(true)}
-            aria-label="Open tour information"
-            className="absolute bottom-3 right-3 z-10 text-slate-600 transition-colors hover:text-slate-900"
-          >
-            <IoInformationCircleOutline className="text-lg" />
-          </button>
           <Form
             initialData={data}
             initialFloorplanPositions={floorplanScenePositions}
@@ -1568,10 +1557,6 @@ const Playground = () => {
           />
         </div>
       </aside>
-      <TourInfoModal
-        open={isTourInfoModalOpen}
-        onClose={() => setIsTourInfoModalOpen(false)}
-      />
     </div>
   );
 };

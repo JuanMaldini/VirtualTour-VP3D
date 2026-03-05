@@ -290,6 +290,40 @@ function DraggableNumberInput({
   );
 }
 
+function CommitTextInput({ value, onCommit, className, ...props }) {
+  const [draft, setDraft] = useState(() => String(value ?? ""));
+
+  useEffect(() => {
+    setDraft(String(value ?? ""));
+  }, [value]);
+
+  const commit = () => {
+    const nextValue = String(draft ?? "");
+    if (nextValue !== String(value ?? "")) {
+      onCommit(nextValue);
+    }
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commit();
+      event.currentTarget.blur();
+    }
+  };
+
+  return (
+    <input
+      {...props}
+      className={className}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={handleKeyDown}
+    />
+  );
+}
+
 function buildSceneSnippet(
   scene,
   {
@@ -528,8 +562,8 @@ function readImageDimensions(file) {
   });
 }
 
-function buildClientAssetPath({ clientName, filename }) {
-  const safeClient = sanitizePathSegment(clientName) || "cliente";
+function buildClientAssetPath({ filename }) {
+  const safeClient = "cliente";
   const safeFilename = String(filename ?? "").trim() || "asset";
   return `/projects/clientes/${safeClient}/${safeFilename}`;
 }
@@ -576,8 +610,6 @@ export default function Form({
   const sessionIdRef = useRef("");
   const didHydrateDraftRef = useRef(false);
   const [tourName, setTourName] = useState(() => initialData?.name ?? "");
-  const [clientName, setClientName] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
   const [uploadedAssets, setUploadedAssets] = useState([]);
   const [canPersistDraft, setCanPersistDraft] = useState(() => !isProduction);
 
@@ -703,6 +735,7 @@ export default function Form({
     () => getDuplicateSceneNameError(scenes),
     [scenes],
   );
+  const firstScene = scenes[0] ?? createEmptyScene();
 
   const [copyState, setCopyState] = useState({ state: "idle", message: "" });
   const [imageLoadingState, setImageLoadingState] = useState({
@@ -792,11 +825,30 @@ export default function Form({
       return;
     }
 
-    onRuntimeDataChange({
-      data: runtimeViewerData,
-      floorplanPositions,
-    });
-  }, [onRuntimeDataChange, runtimeViewerData, floorplanPositions]);
+    if (
+      linkPickState.sceneIndex !== null ||
+      infoPickState.sceneIndex !== null
+    ) {
+      return;
+    }
+
+    const updateTimer = window.setTimeout(() => {
+      onRuntimeDataChange({
+        data: runtimeViewerData,
+        floorplanPositions,
+      });
+    }, 120);
+
+    return () => {
+      window.clearTimeout(updateTimer);
+    };
+  }, [
+    onRuntimeDataChange,
+    runtimeViewerData,
+    floorplanPositions,
+    linkPickState.sceneIndex,
+    infoPickState.sceneIndex,
+  ]);
 
   useEffect(() => {
     const handleActiveSceneChanged = (event) => {
@@ -880,8 +932,6 @@ export default function Form({
       schemaVersion: PLAYGROUND_DRAFT_SCHEMA_VERSION,
       updatedAt: Date.now(),
       tourName,
-      clientName,
-      clientEmail,
       preserveCurrentView,
       autorotateEnabled,
       viewControlButtons,
@@ -1020,8 +1070,6 @@ export default function Form({
       const scenesToUse = nextScenes.length ? nextScenes : fallbackScenes;
 
       setTourName(String(savedDraft.tourName ?? ""));
-      setClientName(String(savedDraft.clientName ?? ""));
-      setClientEmail(String(savedDraft.clientEmail ?? ""));
       setScenes(scenesToUse);
       setSceneIds(buildSceneIds(savedDraft.sceneIds ?? [], scenesToUse.length));
       setHotspotsBySceneIndex(
@@ -1141,6 +1189,59 @@ export default function Form({
     });
   };
 
+  const commitSceneId = (sceneIndex, nextRawId) => {
+    setSceneIds((prevSceneIds) => {
+      const draftSceneIds = [...prevSceneIds];
+      draftSceneIds[sceneIndex] = String(nextRawId ?? "").trim();
+
+      const nextSceneIds = buildSceneIds(draftSceneIds, draftSceneIds.length);
+      const remap = new Map();
+
+      prevSceneIds.forEach((previousId, index) => {
+        const from = String(previousId ?? "").trim();
+        const to = String(nextSceneIds[index] ?? "").trim();
+        if (from && to && from !== to) {
+          remap.set(from, to);
+        }
+      });
+
+      setScenes((prevScenes) =>
+        prevScenes.map((scene, index) => ({
+          ...scene,
+          name: nextSceneIds[index] ?? scene.name,
+        })),
+      );
+
+      if (remap.size > 0) {
+        setHotspotsBySceneIndex((prevHotspots) =>
+          prevHotspots.map((sceneHotspots) => ({
+            ...sceneHotspots,
+            linkHotspots: (sceneHotspots?.linkHotspots ?? []).map((hotspot) => {
+              const currentTarget = String(hotspot?.target ?? "").trim();
+              if (!remap.has(currentTarget)) {
+                return hotspot;
+              }
+              return {
+                ...hotspot,
+                target: remap.get(currentTarget) ?? currentTarget,
+              };
+            }),
+          })),
+        );
+      }
+
+      setActiveSceneId((previousActiveSceneId) => {
+        const currentActive = String(previousActiveSceneId ?? "").trim();
+        if (!currentActive) {
+          return nextSceneIds[0] ?? "";
+        }
+        return remap.get(currentActive) ?? currentActive;
+      });
+
+      return nextSceneIds;
+    });
+  };
+
   const registerUploadedAsset = (entry) => {
     const key = entry.key;
     const previousUrl = uploadedObjectUrlsRef.current.get(key);
@@ -1216,7 +1317,6 @@ export default function Form({
       }
 
       const suggestedPath = buildClientAssetPath({
-        clientName,
         filename: file.name,
       });
       const runtimeUrl = URL.createObjectURL(file);
@@ -1335,6 +1435,16 @@ export default function Form({
   };
 
   const removeLinkHotspot = (sceneIndex, hotspotIndex) => {
+    setLinkPickState((prev) => {
+      if (
+        prev.sceneIndex === sceneIndex &&
+        prev.hotspotIndex === hotspotIndex
+      ) {
+        return { sceneIndex: null, hotspotIndex: null, message: "" };
+      }
+      return prev;
+    });
+
     mutateSceneHotspots(sceneIndex, (currentSceneHotspots) => ({
       ...currentSceneHotspots,
       linkHotspots: (currentSceneHotspots.linkHotspots ?? []).filter(
@@ -1497,6 +1607,16 @@ export default function Form({
   };
 
   const removeInfoHotspot = (sceneIndex, hotspotIndex) => {
+    setInfoPickState((prev) => {
+      if (
+        prev.sceneIndex === sceneIndex &&
+        prev.hotspotIndex === hotspotIndex
+      ) {
+        return { sceneIndex: null, hotspotIndex: null, message: "" };
+      }
+      return prev;
+    });
+
     mutateSceneHotspots(sceneIndex, (currentSceneHotspots) => ({
       ...currentSceneHotspots,
       infoHotspots: (currentSceneHotspots.infoHotspots ?? []).filter(
@@ -1698,11 +1818,25 @@ export default function Form({
 
   const addScene = () => {
     const newSceneIndex = scenes.length;
-    setScenes((prev) => [...prev, createEmptyScene()]);
-    setSceneIds((prev) => buildSceneIds([...prev, ""], prev.length + 1));
+    const newSceneId = createDefaultSceneId(newSceneIndex);
+    setScenes((prev) => [
+      ...prev,
+      {
+        ...createEmptyScene(),
+        name: newSceneId,
+      },
+    ]);
+    setSceneIds((prev) =>
+      buildSceneIds([...prev, newSceneId], prev.length + 1),
+    );
     setHotspotsBySceneIndex((prev) => [...prev, createEmptyHotspots()]);
     setFloorplanPositions((prev) => [...prev, createEmptyFloorplanPosition()]);
-    setExpandedSceneIndexes([newSceneIndex]);
+    setExpandedSceneIndexes((prev) => {
+      const current = prev ?? [];
+      return current.includes(newSceneIndex)
+        ? current
+        : [...current, newSceneIndex];
+    });
   };
 
   const removeScene = (sceneIndex) => {
@@ -1813,8 +1947,6 @@ export default function Form({
     scheduleAutoWrite();
   }, [
     output,
-    clientName,
-    clientEmail,
     preserveCurrentView,
     canPersistDraft,
     scenes,
@@ -1874,10 +2006,10 @@ export default function Form({
     >
       <label className="flex flex-col gap-1">
         <span className="text-xs font-semibold text-slate-700">Tour name</span>
-        <input
+        <CommitTextInput
           className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
           value={tourName}
-          onChange={(e) => setTourName(e.target.value)}
+          onCommit={setTourName}
         />
       </label>
 
@@ -1952,6 +2084,62 @@ export default function Form({
             viewControlButtons
           </label>
         </div>
+
+        <div className="mt-1.5 flex flex-col gap-0.5">
+          <span className="text-[10px] font-medium text-slate-500">
+            Initial view parameters
+          </span>
+          <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-1">
+            <label className="min-w-0 flex flex-col gap-0.5">
+              <span className="text-[11px] font-semibold text-slate-700">
+                Pitch
+              </span>
+              <DraggableNumberInput
+                className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
+                value={firstScene.initialViewParameters.pitch}
+                onChangeValue={(nextValue) =>
+                  updateSceneView(0, { pitch: nextValue })
+                }
+                min={-80}
+                max={180}
+                wheelStep={5}
+                dragStep={1}
+                ariaLabel="Initial pitch"
+              />
+            </label>
+            <label className="min-w-0 flex flex-col gap-0.5">
+              <span className="text-[11px] font-semibold text-slate-700">
+                Yaw
+              </span>
+              <DraggableNumberInput
+                className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
+                value={firstScene.initialViewParameters.yaw}
+                onChangeValue={(nextValue) => updateSceneView(0, { yaw: nextValue })}
+                min={0}
+                max={359}
+                wheelStep={5}
+                dragStep={1}
+                ariaLabel="Initial yaw"
+              />
+            </label>
+            <label className="min-w-0 flex flex-col gap-0.5">
+              <span className="text-[11px] font-semibold text-slate-700">
+                FOV
+              </span>
+              <DraggableNumberInput
+                className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
+                value={firstScene.initialViewParameters.fov}
+                onChangeValue={(nextValue) => updateSceneView(0, { fov: nextValue })}
+                min={30}
+                max={150}
+                wheelStep={5}
+                dragStep={1}
+                ariaLabel="Initial fov"
+              />
+            </label>
+          </div>
+        </div>
+
         <div className="mt-1 flex flex-col gap-1.5">
           {derivedScenes.map((scene, index) => (
             <div
@@ -1965,16 +2153,22 @@ export default function Form({
               }}
               className={`rounded-md bg-white p-1 ring-1 ring-black/5 transition-shadow ${activeSceneId === scene.id ? "outline outline-1 outline-sky-400/70 shadow-[0_0_0_1px_rgba(56,189,248,0.25)]" : ""}`}
             >
-              <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-slate-700">
-                <div className="min-w-0">
-                  <span className="truncate">
-                    {scene.name?.trim() || `Scene ${index + 1}`}
-                  </span>
-                </div>
+              <div
+                className={`flex items-center justify-between gap-2 text-xs font-semibold text-slate-700 ${expandedSceneIndexes.includes(index) ? "mb-1" : "mb-0"}`}
+              >
+                <CommitTextInput
+                  className="h-6 min-w-0 flex-1 rounded-md border border-black/10 bg-white px-2 text-xs font-semibold text-slate-700"
+                  value={scene.id}
+                  onCommit={(nextValue) => commitSceneId(index, nextValue)}
+                  placeholder={
+                    scene.name?.trim() || `scene-name-${index + 1}`
+                  }
+                  aria-label={`Scene ${index + 1} id`}
+                />
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
-                    className="inline-flex h-5 w-5 items-center justify-center rounded border border-black/10 bg-white text-[11px] font-bold text-slate-700"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded border border-black/10 bg-white text-[11px] font-bold text-slate-700"
                     onClick={() => toggleSceneExpanded(index)}
                     aria-label={
                       expandedSceneIndexes.includes(index)
@@ -1991,7 +2185,7 @@ export default function Form({
                   </button>
                   <button
                     type="button"
-                    className="inline-flex h-5 w-5 items-center justify-center rounded border border-black/10 bg-white text-[11px] text-slate-700"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded border border-black/10 bg-white text-[11px] text-slate-700"
                     onClick={() => removeScene(index)}
                     aria-label="Delete scene"
                     title="Delete scene"
@@ -2003,19 +2197,6 @@ export default function Form({
 
               {expandedSceneIndexes.includes(index) ? (
                 <div className="grid grid-cols-1 gap-1">
-                  <label className="flex flex-col gap-0.5">
-                    <span className="text-[11px] font-semibold text-slate-700">
-                      Name
-                    </span>
-                    <input
-                      className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-                      value={scene.name}
-                      onChange={(e) =>
-                        updateScene(index, { name: e.target.value })
-                      }
-                    />
-                  </label>
-
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[11px] font-semibold text-slate-700">
                       Image
@@ -2043,107 +2224,6 @@ export default function Form({
                       onChange={(event) => handleSceneFileChange(index, event)}
                     />
                   </div>
-
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[11px] font-semibold text-slate-700">
-                      Minimap position
-                    </span>
-                    <div className="grid grid-cols-2 gap-1">
-                      <DraggableNumberInput
-                        className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-                        value={floorplanPositions[index]?.x ?? ""}
-                        onChangeValue={(nextValue) =>
-                          updateFloorplanPosition(index, {
-                            x: nextValue,
-                          })
-                        }
-                        min={0}
-                        max={1}
-                        dragStep={0.01}
-                        wheelStep={0.05}
-                        precision={3}
-                        placeholder="0.58"
-                        aria-label="Position x"
-                      />
-                      <DraggableNumberInput
-                        className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-                        value={floorplanPositions[index]?.y ?? ""}
-                        onChangeValue={(nextValue) =>
-                          updateFloorplanPosition(index, {
-                            y: nextValue,
-                          })
-                        }
-                        min={0}
-                        max={1}
-                        dragStep={0.01}
-                        wheelStep={0.05}
-                        precision={3}
-                        placeholder="0.32"
-                        aria-label="Position y"
-                      />
-                    </div>
-                  </div>
-
-                  {index === 0 ? (
-                    <>
-                      <span className="text-[10px] font-medium text-slate-500">
-                        Initial view parameters
-                      </span>
-                      <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-1">
-                        <label className="min-w-0 flex flex-col gap-0.5">
-                          <span className="text-[11px] font-semibold text-slate-700">
-                            Pitch
-                          </span>
-                          <DraggableNumberInput
-                            className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-                            value={scene.initialViewParameters.pitch}
-                            onChangeValue={(nextValue) =>
-                              updateSceneView(index, { pitch: nextValue })
-                            }
-                            min={-80}
-                            max={180}
-                            wheelStep={5}
-                            dragStep={1}
-                            ariaLabel="Initial pitch"
-                          />
-                        </label>
-                        <label className="min-w-0 flex flex-col gap-0.5">
-                          <span className="text-[11px] font-semibold text-slate-700">
-                            Yaw
-                          </span>
-                          <DraggableNumberInput
-                            className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-                            value={scene.initialViewParameters.yaw}
-                            onChangeValue={(nextValue) =>
-                              updateSceneView(index, { yaw: nextValue })
-                            }
-                            min={0}
-                            max={359}
-                            wheelStep={5}
-                            dragStep={1}
-                            ariaLabel="Initial yaw"
-                          />
-                        </label>
-                        <label className="min-w-0 flex flex-col gap-0.5">
-                          <span className="text-[11px] font-semibold text-slate-700">
-                            FOV
-                          </span>
-                          <DraggableNumberInput
-                            className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-                            value={scene.initialViewParameters.fov}
-                            onChangeValue={(nextValue) =>
-                              updateSceneView(index, { fov: nextValue })
-                            }
-                            min={30}
-                            max={150}
-                            wheelStep={5}
-                            dragStep={1}
-                            ariaLabel="Initial fov"
-                          />
-                        </label>
-                      </div>
-                    </>
-                  ) : null}
 
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center justify-between gap-2">
@@ -2187,14 +2267,6 @@ export default function Form({
                                 type="button"
                                 className="inline-flex h-7 items-center justify-center rounded border border-black/10 bg-white px-2 text-[10px] font-semibold text-slate-700"
                                 onClick={() => {
-                                  if (
-                                    selectedTarget &&
-                                    selectedTarget !== hotspot.target
-                                  ) {
-                                    updateLinkHotspot(index, hotspotIndex, {
-                                      target: selectedTarget,
-                                    });
-                                  }
                                   startLinkHotspotLocationPick(
                                     index,
                                     hotspotIndex,
@@ -2246,7 +2318,14 @@ export default function Form({
                           );
                         },
                       )}
-                      {linkPickState.message ? (
+                      {linkPickState.message &&
+                      linkPickState.sceneIndex === index &&
+                      Number.isInteger(linkPickState.hotspotIndex) &&
+                      Boolean(
+                        hotspotsBySceneIndex[index]?.linkHotspots?.[
+                          linkPickState.hotspotIndex
+                        ],
+                      ) ? (
                         <span className="text-[10px] font-medium text-slate-500">
                           {linkPickState.message}
                         </span>
@@ -2292,24 +2371,24 @@ export default function Form({
                                   ? "Click to place"
                                   : "Define location"}
                               </button>
-                              <input
+                              <CommitTextInput
                                 className="min-w-0 rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
                                 placeholder="title"
                                 value={hotspot.title}
-                                onChange={(e) =>
+                                onCommit={(nextValue) =>
                                   updateInfoHotspot(index, hotspotIndex, {
-                                    title: e.target.value,
+                                    title: nextValue,
                                   })
                                 }
-                                aria-10label="Info hotspot title"
+                                aria-label="Info hotspot title"
                               />
-                              <input
+                              <CommitTextInput
                                 className="min-w-0 rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
                                 placeholder="description"
                                 value={hotspot.text}
-                                onChange={(e) =>
+                                onCommit={(nextValue) =>
                                   updateInfoHotspot(index, hotspotIndex, {
-                                    text: e.target.value,
+                                    text: nextValue,
                                   })
                                 }
                                 aria-label="Info hotspot text"
@@ -2328,7 +2407,14 @@ export default function Form({
                           );
                         },
                       )}
-                      {infoPickState.message ? (
+                      {infoPickState.message &&
+                      infoPickState.sceneIndex === index &&
+                      Number.isInteger(infoPickState.hotspotIndex) &&
+                      Boolean(
+                        hotspotsBySceneIndex[index]?.infoHotspots?.[
+                          infoPickState.hotspotIndex
+                        ],
+                      ) ? (
                         <span className="text-[10px] font-medium text-slate-500">
                           {infoPickState.message}
                         </span>
@@ -2343,30 +2429,6 @@ export default function Form({
       </div>
 
       <div className="mt-1.5 flex flex-col gap-2">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-semibold text-slate-700">
-              Name *
-            </span>
-            <input
-              className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-              value={clientName}
-              onChange={(event) => setClientName(event.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-semibold text-slate-700">
-              Email *
-            </span>
-            <input
-              type="email"
-              className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-              value={clientEmail}
-              onChange={(event) => setClientEmail(event.target.value)}
-            />
-          </label>
-        </div>
-
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -2374,7 +2436,7 @@ export default function Form({
             onClick={onGenerate}
             disabled={Boolean(sceneNameError)}
           >
-            Generate data.js
+            Copy data
           </button>
         </div>
 
