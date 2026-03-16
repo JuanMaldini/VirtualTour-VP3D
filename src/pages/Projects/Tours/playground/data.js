@@ -9,7 +9,7 @@ export const data = {
     {
       id: "scene-1",
       name: "",
-      imageUrl: "",
+      imageUrl: "blob:http://localhost:5173/33c1b08b-d327-46ed-ad07-d50526db4177",
       equirectWidth: 4000,
       initialViewParameters: {
         pitch: 0,
@@ -19,6 +19,7 @@ export const data = {
       linkHotspots: [
       ],
       infoHotspots: [
+        { yaw: 0, pitch: 0, title: "trtr", text: "trtrtr" },
       ],
     }
   ],
