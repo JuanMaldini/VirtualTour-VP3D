@@ -6,11 +6,14 @@ import {
   IoChevronDown,
   IoChevronForward,
   IoChevronUp,
+  IoInformationCircleOutline,
   IoRemove,
 } from "react-icons/io5";
 import bowser from "bowser";
 import "../style.css";
+import "../../../components/InfoCardModal/InfoCardModal.css";
 import MarzipanoTopBar from "../components/MarzipanoTopBar";
+import InfoCardModal from "../../../components/InfoCardModal/InfoCardModal";
 import Form from "./Form";
 import { data, floorplanScenePositions } from "./data";
 
@@ -418,7 +421,7 @@ const Playground = () => {
         }
 
         const blockedTarget = event.target?.closest?.(
-          ".hotspot, .info-hotspot-modal, #titleBar, #sceneList, .viewControlButton",
+          ".hotspot, .info-hotspot-modal, .playground-info-card-backdrop, .playground-info-card-modal, #titleBar, #sceneList, .viewControlButton",
         );
 
         if (blockedTarget) {
@@ -473,7 +476,7 @@ const Playground = () => {
         }
 
         const blockedTarget = event.target?.closest?.(
-          ".hotspot, .info-hotspot-modal, #titleBar, #sceneList, .viewControlButton",
+          ".hotspot, .info-hotspot-modal, .playground-info-card-backdrop, .playground-info-card-modal, #titleBar, #sceneList, .viewControlButton",
         );
 
         if (blockedTarget) {
@@ -1121,7 +1124,11 @@ const Playground = () => {
 
       function createInfoHotspotElement(hotspot) {
         const wrapper = document.createElement("div");
-        wrapper.classList.add("hotspot", "info-hotspot");
+        wrapper.classList.add(
+          "hotspot",
+          "info-hotspot",
+          "playground-info-hotspot",
+        );
 
         const header = document.createElement("div");
         header.classList.add("info-hotspot-header");
@@ -1146,42 +1153,44 @@ const Playground = () => {
         title.innerHTML = hotspot.title;
         titleWrapper.appendChild(title);
 
-        const closeWrapper = document.createElement("div");
-        closeWrapper.classList.add("info-hotspot-close-wrapper");
-        const closeIcon = document.createElement("span");
-        closeIcon.classList.add("info-hotspot-close-icon");
-        closeIcon.textContent = "×";
-        closeIcon.setAttribute("aria-hidden", "true");
-        closeWrapper.appendChild(closeIcon);
-
         header.appendChild(iconWrapper);
         header.appendChild(titleWrapper);
-        header.appendChild(closeWrapper);
-
-        const text = document.createElement("div");
-        text.classList.add("info-hotspot-text");
-        text.innerHTML = hotspot.text;
 
         wrapper.appendChild(header);
-        wrapper.appendChild(text);
 
         const modal = document.createElement("div");
-        modal.innerHTML = wrapper.innerHTML;
-        modal.classList.add("info-hotspot-modal");
+        modal.classList.add("playground-info-card-backdrop");
+        modal.innerHTML = renderToStaticMarkup(
+          <InfoCardModal
+            title={hotspot.title}
+            text={hotspot.text}
+            showImage={hotspot.showImage}
+            imageUrl={hotspot.imageUrl}
+          />,
+        );
         document.body.appendChild(modal);
         infoModals.push(modal);
 
         const toggle = () => {
-          wrapper.classList.toggle("visible");
-          modal.classList.toggle("visible");
+          const shouldOpen = !modal.classList.contains("visible");
+          infoModals.forEach((entry) => entry.classList.remove("visible"));
+          if (shouldOpen) {
+            modal.classList.add("visible");
+          }
+        };
+
+        const closeModal = () => {
+          modal.classList.remove("visible");
         };
 
         wrapper
           .querySelector(".info-hotspot-header")
           ?.addEventListener("click", toggle);
-        modal
-          .querySelector(".info-hotspot-close-wrapper")
-          ?.addEventListener("click", toggle);
+        modal.addEventListener("click", (event) => {
+          if (event.target === modal) {
+            closeModal();
+          }
+        });
 
         stopTouchAndScrollEventPropagation(wrapper);
 

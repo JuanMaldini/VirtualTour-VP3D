@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { IoImage, IoImageOutline } from "react-icons/io5";
 import {
   getOrCreatePlaygroundSessionId,
   loadPlaygroundImageBlob,
@@ -90,6 +91,8 @@ const createEmptyInfoHotspot = () => ({
   pitch: "",
   title: "",
   text: "",
+  showImage: false,
+  imageUrl: "",
 });
 
 function getDuplicateSceneNameError(scenes) {
@@ -331,6 +334,7 @@ function buildSceneSnippet(
     infoHotspots,
     includeInitialViewParameters,
     originalImageFileName,
+    infoHotspotImageConsts,
   },
 ) {
   const base = {
@@ -385,9 +389,21 @@ function buildSceneSnippet(
     if (!text && !hasCoords && !String(hotspot.title ?? "").trim()) {
       return;
     }
-    lines.push(
-      `    { yaw: ${toNumberOr(hotspot.yaw, 0)}, pitch: ${toNumberOr(hotspot.pitch, 0)}, title: ${JSON.stringify(title)}, text: ${JSON.stringify(text)} },`,
-    );
+    const imgEntry =
+      hotspot.showImage && hotspot.imageUrl && hotspot.imageUrl !== "error"
+        ? (infoHotspotImageConsts?.get(String(hotspot.imageUrl)) ?? null)
+        : null;
+    let line = `    { yaw: ${toNumberOr(hotspot.yaw, 0)}, pitch: ${toNumberOr(hotspot.pitch, 0)}, title: ${JSON.stringify(title)}, text: ${JSON.stringify(text)}`;
+    if (hotspot.showImage) {
+      line += ", showImage: true";
+      if (imgEntry) {
+        line += `, imageUrl: ${imgEntry.constName}`;
+      } else if (hotspot.imageUrl && hotspot.imageUrl !== "error") {
+        line += `, imageUrl: ${JSON.stringify(String(hotspot.imageUrl))}`;
+      }
+    }
+    line += " },";
+    lines.push(line);
   });
   lines.push("  ],");
 
@@ -412,6 +428,24 @@ function buildOutput({
         String(asset.fileName ?? ""),
       ]),
   );
+
+  // Build a map of blobUrl -> { constName, suggestedPath } for info hotspot images
+  const infoHotspotImageConsts = new Map();
+  const infoHotspotConstLines = [];
+  (uploadedAssets ?? [])
+    .filter((asset) => asset?.kind === "infoHotspot" && asset?.runtimeUrl)
+    .forEach((asset) => {
+      const constName = `infoHotspotImg_s${asset.sceneIndex}_h${asset.hotspotIndex}`;
+      const suggestedPath = String(asset.suggestedPath ?? "");
+      infoHotspotImageConsts.set(String(asset.runtimeUrl), {
+        constName,
+        suggestedPath,
+      });
+      const comment = suggestedPath ? ` // ${suggestedPath}` : "";
+      infoHotspotConstLines.push(
+        `const ${constName} = ${JSON.stringify(String(asset.runtimeUrl))};${comment}`,
+      );
+    });
 
   const normalizedPositions = scenes
     .map((scene, index) => ({
@@ -438,12 +472,20 @@ function buildOutput({
       includeInitialViewParameters: index === 0,
       originalImageFileName:
         runtimeUrlToFileName.get(String(scene.imageUrl ?? "")) || "",
+      infoHotspotImageConsts,
     }),
   );
 
   const lines = [];
 
   lines.push("// Generated from /playground");
+  if (infoHotspotConstLines.length > 0) {
+    lines.push(
+      "// Info hotspot images — replace blob URLs with real asset paths before deploying:",
+    );
+    infoHotspotConstLines.forEach((l) => lines.push(l));
+    lines.push("");
+  }
   lines.push("// Relative positions (0..1) over floorplan image.");
   lines.push("export const floorplanScenePositions = [");
   if (normalizedPositions.length) {
@@ -481,6 +523,49 @@ function buildOutput({
   lines.push("};");
 
   return lines.join("\n");
+}
+
+function sanitizeGeneratedOutput(output) {
+  const marker = "// Generated from /playground";
+  const markerIndex = output.lastIndexOf(marker);
+  const normalizedOutput =
+    markerIndex >= 0 ? output.slice(markerIndex) : output;
+  const lines = normalizedOutput.split("\n");
+  const floorplanLineIndexes = [];
+  let preferredFloorplanLineIndex = -1;
+
+  lines.forEach((line, index) => {
+    if (!/^\s*floorplanImageUrl:\s*.*,$/.test(line)) {
+      return;
+    }
+
+    floorplanLineIndexes.push(index);
+
+    const value = line
+      .replace(/^\s*floorplanImageUrl:\s*/, "")
+      .replace(/,\s*$/, "")
+      .trim();
+
+    if (value && value !== '""' && value !== "''") {
+      preferredFloorplanLineIndex = index;
+    }
+  });
+
+  if (floorplanLineIndexes.length <= 1) {
+    return normalizedOutput;
+  }
+
+  const keepIndex =
+    preferredFloorplanLineIndex >= 0
+      ? preferredFloorplanLineIndex
+      : floorplanLineIndexes[floorplanLineIndexes.length - 1];
+
+  return lines
+    .filter(
+      (_, index) =>
+        !floorplanLineIndexes.includes(index) || index === keepIndex,
+    )
+    .join("\n");
 }
 
 function downloadTextFile(filename, content) {
@@ -715,6 +800,8 @@ export default function Form({
         pitch: hotspot.pitch ?? "",
         title: hotspot.title ?? "",
         text: hotspot.text ?? "",
+        showImage: Boolean(hotspot.showImage),
+        imageUrl: hotspot.imageUrl ?? "",
       })),
     })),
   );
@@ -755,20 +842,22 @@ export default function Form({
 
   const output = useMemo(
     () =>
-      buildOutput({
-        tourName,
-        scenes: derivedScenes,
-        floorplanImageUrl,
-        hotspotsBySceneIndex,
-        floorplanPositions,
-        uploadedAssets,
-        settings: {
-          mouseViewMode: SETTINGS_DEFAULTS.mouseViewMode,
-          autorotateEnabled,
-          fullscreenButton: SETTINGS_DEFAULTS.fullscreenButton,
-          viewControlButtons,
-        },
-      }),
+      sanitizeGeneratedOutput(
+        buildOutput({
+          tourName,
+          scenes: derivedScenes,
+          floorplanImageUrl,
+          hotspotsBySceneIndex,
+          floorplanPositions,
+          uploadedAssets,
+          settings: {
+            mouseViewMode: SETTINGS_DEFAULTS.mouseViewMode,
+            autorotateEnabled,
+            fullscreenButton: SETTINGS_DEFAULTS.fullscreenButton,
+            viewControlButtons,
+          },
+        }),
+      ),
     [
       tourName,
       derivedScenes,
@@ -806,6 +895,8 @@ export default function Form({
             pitch: toNumberOr(hotspot.pitch, 0),
             title: String(hotspot.title ?? "").trim() || "title",
             text: String(hotspot.text ?? "").trim(),
+            showImage: Boolean(hotspot.showImage),
+            imageUrl: String(hotspot.imageUrl ?? ""),
           }),
         ),
       })),
@@ -1086,6 +1177,8 @@ export default function Form({
                 pitch: hotspot.pitch ?? "",
                 title: hotspot.title ?? "",
                 text: hotspot.text ?? "",
+                showImage: Boolean(hotspot.showImage),
+                imageUrl: hotspot.imageUrl ?? "",
               })),
             })),
       );
@@ -1670,6 +1763,65 @@ export default function Form({
     );
   };
 
+  const handleInfoHotspotImageChange = async (
+    sceneIndex,
+    hotspotIndex,
+    event,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!isAllowedImageFile(file)) {
+      updateInfoHotspot(sceneIndex, hotspotIndex, { imageUrl: "error" });
+      return;
+    }
+
+    const suggestedPath = buildClientAssetPath({
+      filename: file.name,
+    });
+    const runtimeUrl = URL.createObjectURL(file);
+    const sessionId =
+      sessionIdRef.current || getOrCreatePlaygroundSessionId() || "";
+    sessionIdRef.current = sessionId;
+    const persistedBlobId = isProduction
+      ? await savePlaygroundImageBlob({
+          sessionId,
+          kind: "infoHotspot",
+          sceneIndex,
+          file,
+        })
+      : "";
+
+    registerUploadedAsset({
+      key: `infoHotspot:${sceneIndex}:${hotspotIndex}`,
+      kind: "infoHotspot",
+      sceneIndex,
+      hotspotIndex,
+      fileName: file.name,
+      mimeType: file.type,
+      runtimeUrl,
+      persistedBlobId,
+      suggestedPath,
+      width: null,
+      height: null,
+      uploadedAt: new Date().toISOString(),
+    });
+
+    updateInfoHotspot(sceneIndex, hotspotIndex, { imageUrl: runtimeUrl });
+  };
+
+  const clearInfoHotspotImage = (sceneIndex, hotspotIndex) => {
+    const key = `infoHotspot:${sceneIndex}:${hotspotIndex}`;
+    const previousUrl = uploadedObjectUrlsRef.current.get(key);
+    if (previousUrl) {
+      revokeBlobUrl(previousUrl);
+      uploadedObjectUrlsRef.current.delete(key);
+    }
+    setUploadedAssets((prev) => prev.filter((a) => a.key !== key));
+    updateInfoHotspot(sceneIndex, hotspotIndex, { imageUrl: "" });
+  };
+
   useEffect(() => {
     const handlePickResult = (event) => {
       const detail = event?.detail ?? {};
@@ -2114,7 +2266,9 @@ export default function Form({
               <DraggableNumberInput
                 className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
                 value={firstScene.initialViewParameters.yaw}
-                onChangeValue={(nextValue) => updateSceneView(0, { yaw: nextValue })}
+                onChangeValue={(nextValue) =>
+                  updateSceneView(0, { yaw: nextValue })
+                }
                 min={0}
                 max={359}
                 wheelStep={5}
@@ -2129,7 +2283,9 @@ export default function Form({
               <DraggableNumberInput
                 className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
                 value={firstScene.initialViewParameters.fov}
-                onChangeValue={(nextValue) => updateSceneView(0, { fov: nextValue })}
+                onChangeValue={(nextValue) =>
+                  updateSceneView(0, { fov: nextValue })
+                }
                 min={30}
                 max={150}
                 wheelStep={5}
@@ -2160,9 +2316,7 @@ export default function Form({
                   className="h-6 min-w-0 flex-1 rounded-md border border-black/10 bg-white px-2 text-xs font-semibold text-slate-700"
                   value={scene.id}
                   onCommit={(nextValue) => commitSceneId(index, nextValue)}
-                  placeholder={
-                    scene.name?.trim() || `scene-name-${index + 1}`
-                  }
+                  placeholder={scene.name?.trim() || `scene-name-${index + 1}`}
                   aria-label={`Scene ${index + 1} id`}
                 />
                 <div className="flex shrink-0 items-center gap-1">
@@ -2353,56 +2507,109 @@ export default function Form({
                           return (
                             <div
                               key={`info-${index}-${hotspotIndex}`}
-                              className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-1"
+                              className="flex flex-col gap-0.5"
                             >
-                              <button
-                                type="button"
-                                className="inline-flex h-7 items-center justify-center rounded border border-black/10 bg-white px-2 text-[10px] font-semibold text-slate-700"
-                                onClick={() =>
-                                  startInfoHotspotLocationPick(
-                                    index,
-                                    hotspotIndex,
-                                  )
-                                }
-                                aria-label="Define info hotspot location"
-                              >
-                                {infoPickState.sceneIndex === index &&
-                                infoPickState.hotspotIndex === hotspotIndex
-                                  ? "Click to place"
-                                  : "Define location"}
-                              </button>
-                              <CommitTextInput
-                                className="min-w-0 rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-                                placeholder="title"
-                                value={hotspot.title}
-                                onCommit={(nextValue) =>
-                                  updateInfoHotspot(index, hotspotIndex, {
-                                    title: nextValue,
-                                  })
-                                }
-                                aria-label="Info hotspot title"
-                              />
-                              <CommitTextInput
-                                className="min-w-0 rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
-                                placeholder="description"
-                                value={hotspot.text}
-                                onCommit={(nextValue) =>
-                                  updateInfoHotspot(index, hotspotIndex, {
-                                    text: nextValue,
-                                  })
-                                }
-                                aria-label="Info hotspot text"
-                              />
-                              <button
-                                type="button"
-                                className="inline-flex h-5 w-5 items-center justify-center self-center justify-self-end rounded border border-black/10 bg-white p-0 text-[9px] text-slate-700"
-                                onClick={() =>
-                                  removeInfoHotspot(index, hotspotIndex)
-                                }
-                                aria-label="Remove info hotspot"
-                              >
-                                −
-                              </button>
+                              <div className="grid grid-cols-[auto_auto_minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-1">
+                                <button
+                                  type="button"
+                                  className="inline-flex h-7 items-center justify-center rounded border border-black/10 bg-white px-2 text-[10px] font-semibold text-slate-700"
+                                  onClick={() =>
+                                    startInfoHotspotLocationPick(
+                                      index,
+                                      hotspotIndex,
+                                    )
+                                  }
+                                  aria-label="Define info hotspot location"
+                                >
+                                  {infoPickState.sceneIndex === index &&
+                                  infoPickState.hotspotIndex === hotspotIndex
+                                    ? "Click to place"
+                                    : "Define location"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`inline-flex h-7 w-7 items-center justify-center rounded border p-0 text-sm ${
+                                    hotspot.showImage
+                                      ? "border-slate-700 bg-slate-700 text-white"
+                                      : "border-black/10 bg-white text-slate-700"
+                                  }`}
+                                  onClick={() =>
+                                    updateInfoHotspot(index, hotspotIndex, {
+                                      showImage: !hotspot.showImage,
+                                    })
+                                  }
+                                  aria-label={
+                                    hotspot.showImage
+                                      ? "Image mode ON — click to disable"
+                                      : "Image mode OFF — click to enable"
+                                  }
+                                  title={
+                                    hotspot.showImage
+                                      ? "Image mode ON"
+                                      : "Image mode OFF"
+                                  }
+                                >
+                                  {hotspot.showImage ? (
+                                    <IoImage aria-hidden="true" />
+                                  ) : (
+                                    <IoImageOutline aria-hidden="true" />
+                                  )}
+                                </button>
+                                <CommitTextInput
+                                  className="min-w-0 rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
+                                  placeholder="title"
+                                  value={hotspot.title}
+                                  onCommit={(nextValue) =>
+                                    updateInfoHotspot(index, hotspotIndex, {
+                                      title: nextValue,
+                                    })
+                                  }
+                                  aria-label="Info hotspot title"
+                                />
+                                {hotspot.showImage ? (
+                                  <label className="inline-flex h-7 min-w-0 cursor-pointer items-center justify-center rounded border border-black/10 bg-white px-2 text-[10px] font-semibold text-slate-700">
+                                    {hotspot.imageUrl === "error"
+                                      ? "Error"
+                                      : hotspot.imageUrl
+                                        ? "Ok"
+                                        : "Upload"}
+                                    <input
+                                      type="file"
+                                      accept="image/jpeg,image/png"
+                                      className="sr-only"
+                                      onChange={(e) =>
+                                        handleInfoHotspotImageChange(
+                                          index,
+                                          hotspotIndex,
+                                          e,
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                ) : (
+                                  <CommitTextInput
+                                    className="min-w-0 rounded-md border border-black/10 bg-white px-2 py-1 text-xs"
+                                    placeholder="description"
+                                    value={hotspot.text}
+                                    onCommit={(nextValue) =>
+                                      updateInfoHotspot(index, hotspotIndex, {
+                                        text: nextValue,
+                                      })
+                                    }
+                                    aria-label="Info hotspot text"
+                                  />
+                                )}
+                                <button
+                                  type="button"
+                                  className="inline-flex h-5 w-5 items-center justify-center self-center justify-self-end rounded border border-black/10 bg-white p-0 text-[9px] text-slate-700"
+                                  onClick={() =>
+                                    removeInfoHotspot(index, hotspotIndex)
+                                  }
+                                  aria-label="Remove info hotspot"
+                                >
+                                  −
+                                </button>
+                              </div>
                             </div>
                           );
                         },

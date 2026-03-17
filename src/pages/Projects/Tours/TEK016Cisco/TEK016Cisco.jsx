@@ -4,7 +4,9 @@ import { FaLocationDot } from "react-icons/fa6";
 import { IoInformationCircleOutline } from "react-icons/io5";
 import bowser from "bowser";
 import "../style.css";
+import "../../../components/InfoCardModal/InfoCardModal.css";
 import MarzipanoTopBar from "../components/MarzipanoTopBar";
+import InfoCardModal from "../../../components/InfoCardModal/InfoCardModal";
 import TourLoadSnackbar from "../components/TourLoadSnackbar";
 import ViewControlButtons from "../components/ViewControlButtons";
 import {
@@ -12,22 +14,26 @@ import {
   preloadTourAssetsWithProgress,
 } from "../utils/tourAssetLoading";
 
-
 // Generated from /playground
+// Info hotspot images — replace blob URLs with real asset paths before deploying:
+const infoHotspotImg_s2_h0 = "/projects/TEK016-Cisco/WB/Cisco Webex Board Pro 55 Floor stand.jpg"; // /projects/clientes/cliente/Cisco Webex Board Pro 55 Floor stand.jpg
+const infoHotspotImg_s3_h0 = "/projects/TEK016-Cisco/WB/Cisco 8875 phone.jpg"; // /projects/clientes/cliente/Cisco 8875 phone.jpg
+const infoHotspotImg_s1_h0 = "/projects/TEK016-Cisco/WB/Cisco 8875 phone.jpg"; // /projects/clientes/cliente/Cisco 8875 phone.jpg
+
 // Relative positions (0..1) over floorplan image.
 export const floorplanScenePositions = [
-  { id: "scene-1", x: 0.7331872050084802, y: 0.6604988772342981 },
-  { id: "scene-2", x: 0.43201752254947684, y: 0.7964637919806397 },
-  { id: "scene-3", x: 0.7200293113283409, y: 0.6473409835541588 },
-  { id: "scene-4", x: 0.4904970678632983, y: 0.6444169982575267 },
+  { id: "scene-1", x: 0.5, y: 0.5 },
+  { id: "scene-2", x: 0.5, y: 0.5 },
+  { id: "scene-3", x: 0.5, y: 0.5 },
+  { id: "scene-4", x: 0.5, y: 0.5 },
 ];
 
 export const data = {
   scenes: [
     {
       id: "scene-1",
-      name: "scene1",
-      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View01.jpg",
+      name: "scene-1",
+      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View01.jpg", // original file: TEK016-Cisco-View01.jpg
       equirectWidth: 4000,
       initialViewParameters: {
         pitch: 0,
@@ -35,48 +41,49 @@ export const data = {
         fov: 110,
       },
       linkHotspots: [
-        { yaw: 60.279305, pitch: -19.21807, target: "scene-2" },
-        { yaw: -31.381337, pitch: -26.889783, target: "scene-3" },
+        { yaw: 62.448729, pitch: -19.091481, target: "scene-2" },
+        { yaw: -30.805296, pitch: -23.965281, target: "scene-3" },
       ],
       infoHotspots: [
-        { yaw: 88.040042, pitch: -6.405186, title: "informacion", text: "phone description" },
       ],
     },
     {
-      id: "scene-2",
-      name: "scene2",
-      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View02.jpg",
+      id: "scene-2", 
+      name: "scene-2",
+      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View02.jpg", // original file: TEK016-Cisco-View02.jpg
       equirectWidth: 4000,
       linkHotspots: [
-        { yaw: -43.641441, pitch: -21.445531, target: "scene-1" },
-        { yaw: 68.920507, pitch: -20.062155, target: "scene-4" },
+        { yaw: -46.48106, pitch: -20.922145, target: "scene-1" },
+        { yaw: 72.407732, pitch: -21.562644, target: "scene-4" },
       ],
       infoHotspots: [
-        { yaw: 18.884843, pitch: -23.073239, title: "taza", text: "should be clean" },
+        { yaw: -68.572587, pitch: -10.81987, title:   "titlé", text: "", showImage: true, imageUrl: infoHotspotImg_s1_h0 },
       ],
     },
     {
       id: "scene-3",
-      name: "scene3",
-      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View03.jpg",
+      name: "scene-3",
+      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View03.jpg", // original file: TEK016-Cisco-View03.jpg
       equirectWidth: 4000,
       linkHotspots: [
-        { yaw: -140.133699, pitch: -24.603145, target: "scene-1" },
-        { yaw: 123.782366, pitch: -19.4508, target: "scene-4" },
+        { yaw: -130.506397, pitch: -27.315622, target: "scene-1" },
+        { yaw: 122.89165, pitch: -18.392499, target: "scene-4" },
       ],
       infoHotspots: [
+        { yaw: -17.654822, pitch: 3.412943, title: "tele", text: "", showImage: true, imageUrl: infoHotspotImg_s2_h0 },
       ],
     },
     {
       id: "scene-4",
-      name: "scene4",
-      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View04.jpg",
+      name: "scene-4",
+      imageUrl: "/projects/TEK016-Cisco/TEK016-Cisco-View04.jpg", // original file: TEK016-Cisco-View04.jpg
       equirectWidth: 4000,
       linkHotspots: [
-        { yaw: -114.52864, pitch: -21.734278, target: "scene-2" },
-        { yaw: -35.365572, pitch: -16.045635, target: "scene-3" },
+        { yaw: -118.840023, pitch: -22.266233, target: "scene-2" },
+        { yaw: -33.788245, pitch: -17.393323, target: "scene-3" },
       ],
       infoHotspots: [
+        { yaw: -96.196475, pitch: -4.927095, title: "telefono", text: "", showImage: true, imageUrl: infoHotspotImg_s3_h0 },
       ],
     }
   ],
@@ -571,7 +578,11 @@ const TEK016Cisco = () => {
 
       function createInfoHotspotElement(hotspot) {
         const wrapper = document.createElement("div");
-        wrapper.classList.add("hotspot", "info-hotspot");
+        wrapper.classList.add(
+          "hotspot",
+          "info-hotspot",
+          "playground-info-hotspot",
+        );
 
         const header = document.createElement("div");
         header.classList.add("info-hotspot-header");
@@ -596,41 +607,44 @@ const TEK016Cisco = () => {
         title.innerHTML = hotspot.title;
         titleWrapper.appendChild(title);
 
-        const closeWrapper = document.createElement("div");
-        closeWrapper.classList.add("info-hotspot-close-wrapper");
-        const closeIcon = document.createElement("img");
-        closeIcon.src = assetUrls.close;
-        closeIcon.classList.add("info-hotspot-close-icon");
-        closeWrapper.appendChild(closeIcon);
-
         header.appendChild(iconWrapper);
         header.appendChild(titleWrapper);
-        header.appendChild(closeWrapper);
-
-        const text = document.createElement("div");
-        text.classList.add("info-hotspot-text");
-        text.innerHTML = hotspot.text;
 
         wrapper.appendChild(header);
-        wrapper.appendChild(text);
 
         const modal = document.createElement("div");
-        modal.innerHTML = wrapper.innerHTML;
-        modal.classList.add("info-hotspot-modal");
+        modal.classList.add("playground-info-card-backdrop");
+        modal.innerHTML = renderToStaticMarkup(
+          <InfoCardModal
+            title={hotspot.title}
+            text={hotspot.text}
+            showImage={hotspot.showImage}
+            imageUrl={hotspot.imageUrl}
+          />,
+        );
         document.body.appendChild(modal);
         infoModals.push(modal);
 
         const toggle = () => {
-          wrapper.classList.toggle("visible");
-          modal.classList.toggle("visible");
+          const shouldOpen = !modal.classList.contains("visible");
+          infoModals.forEach((entry) => entry.classList.remove("visible"));
+          if (shouldOpen) {
+            modal.classList.add("visible");
+          }
+        };
+
+        const closeModal = () => {
+          modal.classList.remove("visible");
         };
 
         wrapper
           .querySelector(".info-hotspot-header")
           ?.addEventListener("click", toggle);
-        modal
-          .querySelector(".info-hotspot-close-wrapper")
-          ?.addEventListener("click", toggle);
+        modal.addEventListener("click", (event) => {
+          if (event.target === modal) {
+            closeModal();
+          }
+        });
 
         stopTouchAndScrollEventPropagation(wrapper);
 

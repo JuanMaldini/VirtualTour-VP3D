@@ -1357,6 +1357,75 @@ body.playground-floorplan-contained .floor-plan-modal {
   transition: opacity 0.3s ease-in-out 0.4s;
 }
 
+/* Info hotspot image body (replaces text when showImage is true) */
+
+.info-hotspot .info-hotspot-image {
+  display: block;
+  width: 300px;
+  max-height: 200px;
+  object-fit: cover;
+  margin: 0;
+  padding: 0;
+  border-radius: 0 0 5px 5px;
+  visibility: hidden;
+  -ms-transform: perspective(200px) rotateX(-89.999deg);
+  -webkit-transform: perspective(200px) rotateX(-89.999deg);
+  transform: perspective(200px) rotateX(-89.999deg);
+  -ms-transform-origin: 50% 0 0;
+  -webkit-transform-origin: 50% 0 0;
+  transform-origin: 50% 0 0;
+  -webkit-transition:
+    -ms-transform 0.3s,
+    -webkit-transform 0.3s,
+    transform 0.3s,
+    visibility 0s 0.3s;
+  transition:
+    -ms-transform 0.3s,
+    -webkit-transform 0.3s,
+    transform 0.3s,
+    visibility 0s 0.3s;
+}
+
+.desktop .info-hotspot.visible .info-hotspot-image {
+  visibility: visible;
+  -ms-transform: perspective(200px) rotateX(0deg);
+  -webkit-transform: perspective(200px) rotateX(0deg);
+  transform: perspective(200px) rotateX(0deg);
+  -webkit-transition:
+    -ms-transform 0.3s 0.3s,
+    -webkit-transform 0.3s 0.3s,
+    transform 0.3s 0.3s,
+    visibility 0s 0s;
+  transition:
+    -ms-transform 0.3s 0.3s,
+    -webkit-transform 0.3s 0.3s,
+    transform 0.3s 0.3s,
+    visibility 0s 0s;
+}
+
+.info-hotspot-modal .info-hotspot-image {
+  position: absolute;
+  top: 110px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: cover;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  -webkit-transition: opacity 0.3s ease-in-out;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.info-hotspot-modal.visible .info-hotspot-image {
+  opacity: 1;
+  -webkit-transition: opacity 0.3s ease-in-out 0.4s;
+  transition: opacity 0.3s ease-in-out 0.4s;
+}
+
 /* View control buttons */
 
 .viewControlButton {
