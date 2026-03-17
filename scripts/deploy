@@ -1,0 +1,18 @@
+
+set -e -v
+cd "$(dirname "$0")/.."
+
+# Deploy the Javascript bundle to be used by the demos.
+gsutil cp dist/marzipano.js gs://www.marzipano.net/build/marzipano.js
+
+# Deploy the release archive.
+gsutil cp dist/*.zip gs://www.marzipano.net/releases/
+
+# Deploy the JSON manifest.
+gsutil cp dist/latest.json gs://www.marzipano.net/releases/latest.json
+
+# Deploy the documentation.
+gsutil -m rsync -r docs gs://www.marzipano.net/reference
+
+# Deploy the demos.
+gsutil -m rsync -r demos gs://www.marzipano.net/demos

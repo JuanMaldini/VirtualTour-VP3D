@@ -1,0 +1,13 @@
+
+set -e
+cd "$(dirname "$0")/.."
+
+REPO_VERSION=$(scripts/version)
+DIST_VERSION=$((head -n 1 dist/marzipano.js || echo) | sed 's/.*(v\(.*\)).*/\1/')
+
+if [[ "$REPO_VERSION" =~ "dev" ]] || [[ "$REPO_VERSION" != "$DIST_VERSION" ]]; then
+  echo The current version cannot be published.
+  echo Please ensure that the release was built from a clean working tree
+  echo at a commit whose git tag matches the npm version.
+  exit 1
+fi

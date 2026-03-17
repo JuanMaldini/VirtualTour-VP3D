@@ -1,0 +1,18 @@
+
+set -e -v
+cd "$(dirname "$0")/.."
+
+PATH=scripts:node_modules/.bin:$PATH
+
+rm -rf build
+mkdir -p build
+
+watchify -v -d \
+  --noparse=node_modules/**/*.js \
+  -s Marzipano \
+  -o build/marzipano.js \
+  src/index.js &
+
+lrhs -b -w src/**/*.js,demos/**/*.js,demos/**/*.css,demos/**/*.html,build/* &
+
+wait
